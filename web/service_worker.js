@@ -2,7 +2,7 @@
 
 // Flutter 3.50 ships a flutter_service_worker.js that only unregisters itself,
 // so GhostThread keeps its own worker for the app shell.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `ghostthread-shell-${VERSION}`;
 const RUNTIME_CACHE = `ghostthread-runtime-${VERSION}`;
 const OFFLINE_URL = 'offline.html';

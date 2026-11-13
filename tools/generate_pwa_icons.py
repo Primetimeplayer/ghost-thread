@@ -8,6 +8,7 @@ drawn in the app's Material 3 seed colours. Run with:
 
 from __future__ import annotations
 
+import math
 import os
 
 from PIL import Image, ImageDraw
@@ -32,30 +33,27 @@ def _background() -> Image.Image:
     return image
 
 
-def _dashed_curve(
+def _dotted_curve(
     draw: ImageDraw.ImageDraw,
     points: list[tuple[float, float]],
     fill: tuple[int, int, int, int],
-    width: int,
-    dash: int,
-    gap: int,
+    radius: float,
+    spacing: float,
 ) -> None:
-    """Draws dashes along a polyline, like a thread that is still going."""
-    on, run = True, 0.0
+    """Places soft dots along a polyline: a thread still being written."""
+    travelled = 0.0
     for (x0, y0), (x1, y1) in zip(points, points[1:]):
-        seg = max(abs(x1 - x0), abs(y1 - y0))
-        steps = max(1, int(seg))
-        for step in range(steps):
-            t0, t1 = step / steps, (step + 1) / steps
-            ax, ay = x0 + (x1 - x0) * t0, y0 + (y1 - y0) * t0
-            bx, by = x0 + (x1 - x0) * t1, y0 + (y1 - y0) * t1
-            run += seg / steps
-            if on and run >= dash:
-                on, run = False, 0.0
-            elif not on and run >= gap:
-                on, run = True, 0.0
-            if on:
-                draw.line([(ax, ay), (bx, by)], fill=fill, width=width)
+        seg = math.hypot(x1 - x0, y1 - y0)
+        steps = max(1, int(seg / max(1.0, spacing / 2)))
+        for step in range(steps + 1):
+            t = step / steps
+            travelled += seg / steps
+            if travelled < spacing:
+                continue
+            travelled = 0.0
+            x = x0 + (x1 - x0) * t
+            y = y0 + (y1 - y0) * t
+            draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill=fill)
 
 
 def _ghost(draw: ImageDraw.ImageDraw, cx: float, cy: float, w: float, h: float) -> None:
@@ -84,31 +82,34 @@ def _compose(maskable: bool) -> Image.Image:
     layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
 
-    # A loose, unfinished thread behind the ghost, open on the right.
-    width = SUPERSAMPLE * (0.030 if maskable else 0.034)
-    y_center = SUPERSAMPLE * 0.60
+    # A loose, unfinished dotted thread drifting behind the ghost.
+    y_center = SUPERSAMPLE * 0.635
     points = [
         (SUPERSAMPLE * x, y_center + SUPERSAMPLE * dy)
         for x, dy in [
-            (-0.02, 0.10),
-            (0.14, -0.02),
-            (0.30, 0.10),
-            (0.46, 0.02),
-            (0.62, 0.12),
-            (0.78, 0.02),
-            (0.92, 0.10),
-            (1.02, 0.03),
+            (-0.04, 0.075),
+            (0.12, 0.005),
+            (0.28, 0.075),
+            (0.44, 0.015),
+            (0.60, 0.085),
+            (0.74, 0.02),
         ]
     ]
-    _dashed_curve(draw, points, (243, 237, 247, 115), int(width), int(SUPERSAMPLE * 0.055), int(SUPERSAMPLE * 0.038))
+    _dotted_curve(
+        draw,
+        points,
+        (243, 237, 247, 120),
+        SUPERSAMPLE * (0.012 if maskable else 0.013),
+        SUPERSAMPLE * 0.052,
+    )
+
+    # The thread simply stops: one open ring where the thought trails off.
+    ring_x, ring_y = SUPERSAMPLE * 0.845, y_center + SUPERSAMPLE * 0.02
+    ring_r = SUPERSAMPLE * 0.040
     draw.ellipse(
-        [
-            SUPERSAMPLE * 0.475 - width * 0.9,
-            y_center - width * 0.9,
-            SUPERSAMPLE * 0.475 + width * 0.9,
-            y_center + width * 0.9,
-        ],
-        fill=(243, 237, 247, 150),
+        [ring_x - ring_r, ring_y - ring_r, ring_x + ring_r, ring_y + ring_r],
+        outline=(243, 237, 247, 150),
+        width=int(SUPERSAMPLE * 0.012),
     )
 
     scale = 0.42 if maskable else 0.50
