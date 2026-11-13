@@ -5,17 +5,125 @@ import 'package:material_ui/material_ui.dart';
 import '../models/ghost_thread.dart';
 import '../providers/thread_providers.dart';
 import '../services/embedding_service.dart';
+import '../services/matching_service.dart';
 import 'capture_screen.dart';
 import 'thread_detail_screen.dart';
 
 /// Lists every active ghost thread, newest first.
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   static final DateFormat _dateFormat = DateFormat.yMMMd().add_jm();
 
+  bool _isMatching = false;
+
+  /// Temporary Phase 3 test path: rank threads against the current context.
+  Future<void> _findRelevantThreads() async {
+    if (_isMatching) {
+      return;
+    }
+    setState(() => _isMatching = true);
+
+    List<ThreadMatch>? matches;
+    try {
+      final threads = await ref.read(activeThreadsProvider.future);
+      final context = await ref.read(contextServiceProvider).captureContext();
+      matches = ref
+          .read(matchingServiceProvider)
+          .rankThreads(threads: threads, context: context, limit: 5);
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not find relevant threads.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isMatching = false);
+      }
+    }
+
+    if (!mounted || matches == null) {
+      return;
+    }
+    await _showMatches(matches);
+  }
+
+  Future<void> _showMatches(List<ThreadMatch> matches) {
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Relevant right now', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  'Context-only preview — time, battery and place. '
+                  'Content similarity joins in once a query embedding exists.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (matches.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'Nothing matched the current context.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  )
+                else
+                  for (final match in matches)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        match.thread.content,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        match.reasons.isEmpty
+                            ? 'No strong shared signals'
+                            : match.reasons.join(' · '),
+                      ),
+                      trailing: Text(
+                        '${(match.score * 100).round()}%',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                ThreadDetailScreen(thread: match.thread),
+                          ),
+                        );
+                      },
+                    ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final threads = ref.watch(activeThreadsProvider);
     final embeddings = ref.watch(embeddingServiceProvider);
 
@@ -26,20 +134,44 @@ class HomeScreen extends ConsumerWidget {
         error: (error, _) => _ErrorState(message: error.toString()),
         data: (items) => items.isEmpty
             ? const _EmptyState()
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final thread = items[index];
-                  return _ThreadCard(
-                    thread: thread,
-                    subtitle: _dateFormat.format(thread.createdAt),
-                    onLongPress: () {
-                      _showSimilarThreads(context, thread, items, embeddings);
-                    },
-                  );
-                },
+            : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.tonalIcon(
+                        onPressed: _isMatching ? null : _findRelevantThreads,
+                        icon: _isMatching
+                            ? const SizedBox.square(
+                                dimension: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.travel_explore),
+                        label: const Text('Find relevant threads'),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      itemCount: items.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final thread = items[index];
+                        return _ThreadCard(
+                          thread: thread,
+                          subtitle: _dateFormat.format(thread.createdAt),
+                          onLongPress: () {
+                            _showSimilarThreads(context, thread, items, embeddings);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
       ),
       floatingActionButton: FloatingActionButton.large(
@@ -116,7 +248,9 @@ Future<void> _showSimilarThreads(
                       overflow: TextOverflow.ellipsis,
                     ),
                     subtitle: Text(
-                      HomeScreen._dateFormat.format(entry.thread.createdAt),
+                      _HomeScreenState._dateFormat.format(
+                        entry.thread.createdAt,
+                      ),
                     ),
                     trailing: Text(
                       entry.score.toStringAsFixed(3),

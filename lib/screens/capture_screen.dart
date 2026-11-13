@@ -33,15 +33,16 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
 
     setState(() => _isSaving = true);
 
-    final thread = GhostThread(
-      id: const Uuid().v4(),
-      content: content,
-      createdAt: DateTime.now(),
-      contextAtCreation: const <String, dynamic>{},
-      embedding: ref.read(embeddingServiceProvider).embed(content),
-    );
-
     try {
+      final context = await ref.read(contextServiceProvider).captureContext();
+      final thread = GhostThread(
+        id: const Uuid().v4(),
+        content: content,
+        createdAt: DateTime.now(),
+        contextAtCreation: context,
+        embedding: ref.read(embeddingServiceProvider).embed(content),
+      );
+
       await ref.read(storageServiceProvider).saveThread(thread);
       ref.invalidate(activeThreadsProvider);
     } on Object {
