@@ -64,6 +64,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
     return _update(state.copyWith(autoKillAfter90Days: value));
   }
 
+  /// Replaces every setting, used after restoring a backup.
+  Future<void> replace(AppSettings next) => _update(next);
+
   Future<void> _update(AppSettings next) async {
     state = next;
     await ref.read(settingsServiceProvider).save(next);

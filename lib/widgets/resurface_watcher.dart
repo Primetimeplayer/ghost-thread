@@ -66,6 +66,11 @@ class _ResurfaceWatcherState extends ConsumerState<ResurfaceWatcher>
           ref.invalidate(activeThreadsProvider);
         }
       }
+
+      // Keep the home-screen widget in step with what is on disk.
+      await ref.read(homeWidgetServiceProvider).refresh(
+        activeThreads: await ref.read(storageServiceProvider).getActiveThreads(),
+      );
     } on Object catch (error) {
       debugPrint('Resurfacing check skipped: $error');
     } finally {

@@ -8,6 +8,7 @@ environment:
 
 dependencies:
   battery_plus: ^7.1.2
+  cryptography: ^2.9.0
   device_info_plus: ^13.3.0
   flutter:
     sdk: flutter
@@ -16,10 +17,12 @@ dependencies:
   geolocator: ^14.1.2
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  home_widget: ^0.10.0
   intl: ^0.20.3
   material_ui: ^1.1.0
   path_provider: ^2.1.6
   riverpod: ^3.5.0
+  share_plus: ^13.3.1
   uuid: ^4.6.0
 
 dev_dependencies:

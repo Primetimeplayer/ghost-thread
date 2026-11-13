@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../models/ghost_thread.dart';
 import '../providers/thread_providers.dart';
+import '../widgets/secure_dialogs.dart';
 
 /// Single thread with Continue / Kill actions.
 class ThreadDetailScreen extends ConsumerWidget {
@@ -34,6 +35,7 @@ class ThreadDetailScreen extends ConsumerWidget {
                 thread: value,
                 onContinue: () => _markContinued(context, ref, value),
                 onKill: () => _kill(context, ref, value),
+                onShare: () => showShareThreadDialog(context, ref, value),
               ),
       ),
     );
@@ -114,11 +116,13 @@ class _ThreadDetailBody extends StatelessWidget {
     required this.thread,
     required this.onContinue,
     required this.onKill,
+    required this.onShare,
   });
 
   final GhostThread thread;
   final VoidCallback onContinue;
   final VoidCallback onKill;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +187,15 @@ class _ThreadDetailBody extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+        const SizedBox(height: 24),
+        OutlinedButton.icon(
+          onPressed: onShare,
+          icon: const Icon(Icons.lock_outline),
+          label: const Text('Share privately'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+          ),
+        ),
       ],
     );
   }

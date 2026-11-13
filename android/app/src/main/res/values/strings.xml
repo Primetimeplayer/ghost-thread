@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ghost_thread_widget_label">GhostThread</string>
+    <string name="ghost_thread_widget_empty">No unfinished thoughts</string>
+    <string name="ghost_thread_widget_description">The thought that keeps coming back</string>
+</resources>

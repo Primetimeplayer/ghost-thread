@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'models/app_settings.dart';
@@ -7,6 +9,7 @@ import 'providers/thread_providers.dart';
 import 'screens/home_screen.dart';
 import 'screens/thread_detail_screen.dart';
 import 'services/embedding_service.dart';
+import 'services/home_widget_service.dart';
 import 'services/notification_service.dart';
 import 'services/settings_service.dart';
 import 'services/storage_service.dart';
@@ -46,6 +49,32 @@ Future<void> main() async {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _openThread(launchThreadId),
     );
+  }
+
+  await _listenForWidgetTaps();
+}
+
+/// Opens the thread behind a home-screen widget tap, including cold starts.
+Future<void> _listenForWidgetTaps() async {
+  if (kIsWeb) {
+    return;
+  }
+
+  try {
+    final initial = await HomeWidget.initiallyLaunchedFromHomeWidget();
+    final initialId = HomeWidgetService.threadIdFromUri(initial);
+    if (initialId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openThread(initialId));
+    }
+
+    HomeWidget.widgetClicked.listen((uri) {
+      final threadId = HomeWidgetService.threadIdFromUri(uri);
+      if (threadId != null) {
+        _openThread(threadId);
+      }
+    });
+  } on Object catch (error) {
+    debugPrint('Home widget unavailable: $error');
   }
 }
 

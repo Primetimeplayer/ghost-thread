@@ -95,6 +95,9 @@ class StorageService {
     return _decode(raw);
   }
 
+  /// Deletes every stored thread. Only used by backup restore (replace mode).
+  Future<void> clearThreads() => _box.clear();
+
   /// Hides a thread without removing it from storage.
   Future<void> softDeleteThread(String id) async {
     final thread = await getThread(id);

@@ -4,6 +4,9 @@ import 'package:material_ui/material_ui.dart';
 import '../models/app_settings.dart';
 import '../providers/service_providers.dart';
 import '../providers/settings_provider.dart';
+import '../providers/thread_providers.dart';
+import '../services/crypto_service.dart';
+import '../widgets/secure_dialogs.dart';
 
 /// Appearance, resurfacing, context signals and data export.
 class SettingsScreen extends ConsumerWidget {
@@ -126,6 +129,26 @@ class SettingsScreen extends ConsumerWidget {
             ),
             onTap: () => _export(context, ref),
           ),
+          ListTile(
+            leading: const Icon(Icons.lock_open),
+            title: const Text('Import private thread'),
+            subtitle: const Text('Decrypt a payload someone shared with you'),
+            onTap: () => showImportThreadDialog(context, ref),
+          ),
+          ListTile(
+            leading: const Icon(Icons.enhanced_encryption_outlined),
+            title: const Text('Encrypted backup to device'),
+            subtitle: const Text(
+              'All threads and settings in one encrypted file',
+            ),
+            onTap: () => _createBackup(context, ref),
+          ),
+          ListTile(
+            leading: const Icon(Icons.restore),
+            title: const Text('Restore from backup'),
+            subtitle: const Text('Merge into or replace local data'),
+            onTap: () => _restoreBackup(context, ref),
+          ),
         ],
       ),
     );
@@ -188,6 +211,151 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
       const SnackBar(content: Text('Export failed. Please try again.')),
     );
   }
+}
+
+Future<void> _createBackup(BuildContext context, WidgetRef ref) async {
+  final passphrase = await askPassphraseDialog(
+    context,
+    title: 'Encrypted backup',
+    message:
+        'The backup is encrypted with this passphrase. Keep it safe — it '
+        'cannot be recovered, and neither can the backup without it.',
+    actionLabel: 'Create backup',
+    confirm: true,
+  );
+  if (passphrase == null || !context.mounted) {
+    return;
+  }
+
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final path = await ref
+        .read(backupServiceProvider)
+        .createBackup(
+          settings: ref.read(settingsProvider),
+          passphrase: passphrase,
+        );
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Encrypted backup saved to $path'),
+        duration: const Duration(seconds: 6),
+      ),
+    );
+  } on UnsupportedError {
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Encrypted backups are not available in the browser yet.'),
+      ),
+    );
+  } on CryptoException catch (error) {
+    messenger.showSnackBar(SnackBar(content: Text(error.message)));
+  } on Object {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Could not create the backup.')),
+    );
+  }
+}
+
+Future<void> _restoreBackup(BuildContext context, WidgetRef ref) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final backupService = ref.read(backupServiceProvider);
+
+  final List<String> files;
+  try {
+    files = await backupService.listBackups();
+  } on UnsupportedError {
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Encrypted backups are not available in the browser yet.'),
+      ),
+    );
+    return;
+  } on Object {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Could not look for backups.')),
+    );
+    return;
+  }
+
+  if (!context.mounted) {
+    return;
+  }
+  if (files.isEmpty) {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('No backups found on this device yet.')),
+    );
+    return;
+  }
+
+  final path = await _pickBackupFile(context, files);
+  if (path == null || !context.mounted) {
+    return;
+  }
+
+  final passphrase = await askPassphraseDialog(
+    context,
+    title: 'Restore backup',
+    message: 'Enter the passphrase used for this backup file.',
+    actionLabel: 'Unlock',
+  );
+  if (passphrase == null || !context.mounted) {
+    return;
+  }
+
+  final replace = await askRestoreModeDialog(context);
+  if (replace == null || !context.mounted) {
+    return;
+  }
+
+  try {
+    final backup = await backupService.readBackup(
+      path: path,
+      passphrase: passphrase,
+    );
+    final count = await backupService.restore(backup, replace: replace);
+
+    final restoredSettings = backup.settings;
+    if (restoredSettings != null) {
+      await ref.read(settingsProvider.notifier).replace(restoredSettings);
+    }
+    ref.invalidate(activeThreadsProvider);
+    ref.invalidate(threadProvider);
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Restored $count thread${count == 1 ? '' : 's'}'),
+      ),
+    );
+  } on CryptoException catch (error) {
+    messenger.showSnackBar(SnackBar(content: Text(error.message)));
+  } on Object {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Could not restore this backup.')),
+    );
+  }
+}
+
+Future<String?> _pickBackupFile(
+  BuildContext context,
+  List<String> paths,
+) {
+  return showDialog<String>(
+    context: context,
+    builder: (dialogContext) => SimpleDialog(
+      title: const Text('Choose a backup'),
+      children: [
+        for (final path in paths)
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(dialogContext).pop(path),
+            child: Text(
+              path.split('/').last,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _SectionHeader extends StatelessWidget {
