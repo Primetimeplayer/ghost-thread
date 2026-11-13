@@ -21,6 +21,11 @@ final activeThreadsProvider = FutureProvider<List<GhostThread>>((ref) {
   return ref.watch(storageServiceProvider).getActiveThreads();
 });
 
+/// A single thread by id, reloaded after updates.
+final threadProvider = FutureProvider.family<GhostThread?, String>((ref, id) {
+  return ref.watch(storageServiceProvider).getThread(id);
+});
+
 /// Deterministic mock embeddings. Override this once a real on-device model
 /// is wired up.
 final embeddingServiceProvider = Provider<EmbeddingService>((ref) {

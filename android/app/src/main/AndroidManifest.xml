@@ -3,6 +3,8 @@
          skips it entirely when permission has not been granted. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <!-- Android 13+ runtime permission for resurfacing notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="ghost_thread"
         android:name="${applicationName}"

@@ -72,6 +72,13 @@ class StorageService {
     return _box.put(thread.id, thread.toJson());
   }
 
+  /// Every stored thread, active or put to rest, newest first.
+  Future<List<GhostThread>> getAllThreads() async {
+    final threads = _readAll().toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return threads;
+  }
+
   /// All threads that are still active, newest first.
   Future<List<GhostThread>> getActiveThreads() async {
     final threads = _readAll().where((thread) => thread.isActive).toList()
