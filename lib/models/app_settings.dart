@@ -15,6 +15,7 @@ class AppSettings {
     this.useDevice = true,
     this.themeMode = AppThemeMode.system,
     this.autoKillAfter90Days = false,
+    this.installPromptDismissed = false,
   });
 
   static const double defaultSensitivity = 0.45;
@@ -41,6 +42,9 @@ class AppSettings {
   /// When on, stale threads are marked inactive on launch/resume.
   final bool autoKillAfter90Days;
 
+  /// Set once the user waves away the web install banner (web only).
+  final bool installPromptDismissed;
+
   AppSettings copyWith({
     double? matchSensitivity,
     int? quietStartMinutes,
@@ -51,6 +55,7 @@ class AppSettings {
     bool? useDevice,
     AppThemeMode? themeMode,
     bool? autoKillAfter90Days,
+    bool? installPromptDismissed,
   }) {
     return AppSettings(
       matchSensitivity: matchSensitivity ?? this.matchSensitivity,
@@ -62,6 +67,8 @@ class AppSettings {
       useDevice: useDevice ?? this.useDevice,
       themeMode: themeMode ?? this.themeMode,
       autoKillAfter90Days: autoKillAfter90Days ?? this.autoKillAfter90Days,
+      installPromptDismissed:
+          installPromptDismissed ?? this.installPromptDismissed,
     );
   }
 
@@ -76,6 +83,7 @@ class AppSettings {
       'useDevice': useDevice,
       'themeMode': themeMode.name,
       'autoKillAfter90Days': autoKillAfter90Days,
+      'installPromptDismissed': installPromptDismissed,
     };
   }
 
@@ -94,6 +102,7 @@ class AppSettings {
         orElse: () => AppThemeMode.system,
       ),
       autoKillAfter90Days: map['autoKillAfter90Days'] as bool? ?? false,
+      installPromptDismissed: map['installPromptDismissed'] as bool? ?? false,
     );
   }
 

@@ -8,6 +8,7 @@ import '../providers/settings_provider.dart';
 import '../providers/thread_providers.dart';
 import '../services/embedding_service.dart';
 import '../services/matching_service.dart';
+import '../widgets/install_banner.dart';
 import '../widgets/press_scale.dart';
 import 'capture_screen.dart';
 import 'settings_screen.dart';
@@ -287,7 +288,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      body: threads.when(
+      body: Column(
+        children: [
+          const InstallBanner(),
+          Expanded(
+            child: threads.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _ErrorState(message: error.toString()),
         data: (items) {
@@ -353,6 +358,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           );
         },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: PressScale(
         child: FloatingActionButton.large(

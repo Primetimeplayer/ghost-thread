@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,7 +18,7 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Offline-first app that resurfaces unfinished thoughts based on context">
+  <meta name="description" content="GhostThread brings back the thoughts you keep putting off, when the moment fits. Offline-first, no accounts.">
 
   <!--
     Uncomment the tag below to lay the app out underneath the parts of the
@@ -32,19 +32,89 @@
   -->
   <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"> -->
 
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#6750A4">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141218">
+  <meta name="color-scheme" content="light dark">
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="ghost_thread">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="GhostThread">
+  <link rel="apple-touch-icon" href="icons/Icon-180.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>ghost_thread</title>
+  <title>GhostThread</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Launch splash: shown until Flutter paints its first frame. */
+    .ghost-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background: #FEF7FF;
+      color: #1D1B20;
+      font-family: "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
+      transition: opacity 320ms ease;
+      opacity: 1;
+    }
+    .ghost-splash--hidden { opacity: 0; pointer-events: none; }
+    .ghost-splash img {
+      width: 104px;
+      height: 104px;
+      border-radius: 26px;
+      box-shadow: 0 10px 30px rgba(103, 80, 164, 0.28);
+    }
+    .ghost-splash__title {
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: 0.4px;
+    }
+    .ghost-splash__bar {
+      width: 96px;
+      height: 3px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(103, 80, 164, 0.18);
+    }
+    .ghost-splash__bar::after {
+      content: "";
+      display: block;
+      width: 36px;
+      height: 100%;
+      border-radius: inherit;
+      background: #6750A4;
+      animation: ghost-splash-slide 1.1s ease-in-out infinite alternate;
+    }
+    @keyframes ghost-splash-slide {
+      from { transform: translateX(0); }
+      to { transform: translateX(60px); }
+    }
+    @media (prefers-color-scheme: dark) {
+      .ghost-splash { background: #141218; color: #E6E0E9; }
+      .ghost-splash__bar { background: rgba(208, 188, 255, 0.22); }
+      .ghost-splash__bar::after { background: #D0BCFF; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ghost-splash__bar::after { animation: none; width: 100%; }
+    }
+  </style>
 </head>
 <body>
+  <div class="ghost-splash" id="ghost-splash" role="status" aria-live="polite">
+    <img src="icons/Icon-192.png" alt="" aria-hidden="true">
+    <div class="ghost-splash__title">GhostThread</div>
+    <div class="ghost-splash__bar" aria-hidden="true"></div>
+  </div>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -53,6 +123,69 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // Flutter 3.50's generated worker only unregisters itself, which would
+    // remove the app's offline cache. Register the real worker instead and
+    // redirect Flutter's cleanup registration to it.
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      var register = navigator.serviceWorker.register.bind(navigator.serviceWorker);
+      navigator.serviceWorker.register = function (url, options) {
+        if (String(url).indexOf('flutter_service_worker.js') !== -1) {
+          return register('service_worker.js', { scope: './' });
+        }
+        return register(url, options);
+      };
+      register('service_worker.js', { scope: './' }).catch(function (error) {
+        console.warn('GhostThread offline cache unavailable:', error);
+      });
+    })();
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
+
+  <script>
+    (function () {
+      var splash = document.getElementById('ghost-splash');
+      var removed = false;
+
+      function flutterStarted() {
+        return document.querySelector('flutter-view, flt-glass-pane, flt-scene-host');
+      }
+
+      function hideSplash() {
+        if (removed) return;
+        removed = true;
+        if (!splash) return;
+        splash.classList.add('ghost-splash--hidden');
+        setTimeout(function () {
+          if (splash && splash.parentNode) {
+            splash.parentNode.removeChild(splash);
+          }
+        }, 360);
+      }
+
+      new MutationObserver(function () {
+        if (flutterStarted()) hideSplash();
+      }).observe(document.body, { childList: true, subtree: true });
+
+      window.addEventListener('flutter-first-frame', hideSplash);
+
+      // If the app cannot boot while offline, the shell was never cached:
+      // hand the user a plain page instead of the browser error page.
+      setTimeout(function () {
+        if (flutterStarted()) {
+          hideSplash();
+          return;
+        }
+        if (!navigator.onLine) {
+          window.location.replace('offline.html');
+        }
+      }, 6000);
+
+      // Never trap the user behind a stuck splash.
+      setTimeout(hideSplash, 15000);
+    })();
+  </script>
 </body>
 </html>

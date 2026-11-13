@@ -64,6 +64,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
     return _update(state.copyWith(autoKillAfter90Days: value));
   }
 
+  Future<void> setInstallPromptDismissed(bool value) {
+    return _update(state.copyWith(installPromptDismissed: value));
+  }
+
   /// Replaces every setting, used after restoring a backup.
   Future<void> replace(AppSettings next) => _update(next);
 
