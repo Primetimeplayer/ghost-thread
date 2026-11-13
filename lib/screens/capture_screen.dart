@@ -40,12 +40,30 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       contextAtCreation: const <String, dynamic>{},
     );
 
-    await ref.read(storageServiceProvider).saveThread(thread);
-    ref.invalidate(activeThreadsProvider);
-
-    if (mounted) {
-      Navigator.of(context).pop();
+    try {
+      await ref.read(storageServiceProvider).saveThread(thread);
+      ref.invalidate(activeThreadsProvider);
+    } on Object {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to save thread. Please try again.'),
+        ),
+      );
+      return;
     }
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Thread saved')),
+    );
+    Navigator.of(context).pop();
   }
 
   @override
