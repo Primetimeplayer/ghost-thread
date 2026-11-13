@@ -1,0 +1,31 @@
+name: ghost_thread
+description: "Offline-first app that resurfaces unfinished thoughts based on context"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.14.0
+
+dependencies:
+  battery_plus: ^7.1.2
+  device_info_plus: ^13.3.0
+  flutter:
+    sdk: flutter
+  flutter_local_notifications: ^23.0.1
+  flutter_riverpod: ^3.5.0
+  geolocator: ^14.1.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  intl: ^0.20.3
+  material_ui: ^1.1.0
+  path_provider: ^2.1.6
+  riverpod: ^3.5.0
+  uuid: ^4.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
