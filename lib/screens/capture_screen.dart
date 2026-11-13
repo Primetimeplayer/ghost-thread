@@ -38,6 +38,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       content: content,
       createdAt: DateTime.now(),
       contextAtCreation: const <String, dynamic>{},
+      embedding: ref.read(embeddingServiceProvider).embed(content),
     );
 
     try {

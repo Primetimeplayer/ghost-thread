@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../models/ghost_thread.dart';
 import '../providers/thread_providers.dart';
+import '../services/embedding_service.dart';
 import 'capture_screen.dart';
 import 'thread_detail_screen.dart';
 
@@ -16,6 +17,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final threads = ref.watch(activeThreadsProvider);
+    final embeddings = ref.watch(embeddingServiceProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('GhostThread')),
@@ -33,6 +35,9 @@ class HomeScreen extends ConsumerWidget {
                   return _ThreadCard(
                     thread: thread,
                     subtitle: _dateFormat.format(thread.createdAt),
+                    onLongPress: () {
+                      _showSimilarThreads(context, thread, items, embeddings);
+                    },
                   );
                 },
               ),
@@ -50,11 +55,92 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+/// Temporary debug view: the three threads whose mock embeddings are closest
+/// to [selected]. Long-press a thread to open it.
+Future<void> _showSimilarThreads(
+  BuildContext context,
+  GhostThread selected,
+  List<GhostThread> allThreads,
+  EmbeddingService embeddings,
+) {
+  final ranked = <({GhostThread thread, double score})>[
+    for (final thread in allThreads)
+      if (thread.id != selected.id)
+        (
+          thread: thread,
+          score: embeddings.cosineSimilarity(
+            selected.embedding,
+            thread.embedding,
+          ),
+        ),
+  ]..sort((a, b) => b.score.compareTo(a.score));
+  final top = ranked.take(3).toList();
+
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) {
+      final theme = Theme.of(context);
+
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Most similar threads', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(
+                'Debug preview — cosine similarity of mock embeddings',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (top.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'No other threads to compare yet.',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                )
+              else
+                for (final entry in top)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      entry.thread.content,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      HomeScreen._dateFormat.format(entry.thread.createdAt),
+                    ),
+                    trailing: Text(
+                      entry.score.toStringAsFixed(3),
+                      style: theme.textTheme.labelLarge,
+                    ),
+                  ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 class _ThreadCard extends StatelessWidget {
-  const _ThreadCard({required this.thread, required this.subtitle});
+  const _ThreadCard({
+    required this.thread,
+    required this.subtitle,
+    required this.onLongPress,
+  });
 
   final GhostThread thread;
   final String subtitle;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +169,7 @@ class _ThreadCard extends StatelessWidget {
             ),
           );
         },
+        onLongPress: onLongPress,
       ),
     );
   }
